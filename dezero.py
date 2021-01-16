@@ -5,25 +5,46 @@ import numpy as np
 class Variable:
     def __init__(self, data):
         self.data = data
+        self.grad = None
+        self.creator = None
+    
+    def set_creator(self, func):
+        self.creator = func
  
 class Function:
-    def __call__(self, input:Variable):
+    def __call__(self, input):
         x = input.data
         y = self.forward(x)
         output = Variable(y)
+        self.input = input
+        output.set_creator(self)
+        self.output = output
         return output
 
     def forward(self, x):
+        raise NotImplementedError()
+
+    def backforwad(self, gy):
         raise NotImplementedError()
 
 class Square(Function):
     def forward(self, x):
         return x ** 2
 
+    def backforwad(self, gy):
+        x = self.input.data
+        gx = 2 * x * gy
+        return gx
+
 class Exp(Function):
     def forward(self, x):
         return np.exp(x)
 
+    def backforwad(self, gy):
+        x = self.input.data
+        gx = np.exp(x) * gy
+        return gx
+         
 def numerical_diff(f, x, eps=1e-4):
     x0 = Variable(x.data - eps)
     x1 = Variable(x.data + eps)
@@ -38,9 +59,41 @@ def f(x):
     return C(B(A(x)))
 
 def main():
+    A = Square()
+    B = Exp()
+    C = Square()
+
     x = Variable(np.array(0.5))
-    dy = numerical_diff(f, x)
-    print(dy)
+    a = A(x)
+    b = B(a)
+    y = C(b)
+
+    y.grad = np.array(1.0)
+    C = y.creator
+    b = C.input
+    b.grad = C.backforwad(y.grad)
+
+    B = b.creator
+    a = B.input
+    a.grad = B.backforwad(b.grad)
+
+    A = a.creator
+    x = A.input
+    x.grad = A.backforwad(a.grad)
+    print(x.grad)
+
+    # assert y.creator == C
+    # assert y.creator.input == b
+    # assert y.creator.input.creator == B
+    # assert y.creator.input.creator.input == a
+    # assert y.creator.input.creator.input.creator == A
+    # assert y.creator.input.creator.input.creator.input == x
+    # print(y.data)
+    # y.grad = np.array(1.0)
+    # b.grad = C.backforwad(y.grad)
+    # a.grad = B.backforwad(b.grad)
+    # x.grad = A.backforwad(a.grad)
+    # print(x.grad)
 
 if __name__ == "__main__":
     main()
