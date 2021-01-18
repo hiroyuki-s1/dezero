@@ -10,7 +10,13 @@ class Variable:
     
     def set_creator(self, func):
         self.creator = func
- 
+        
+    def backward(self):
+        f = self.creator
+        if f is not None:
+            x = f.input
+            x.grad = f.backward(self.grad)
+            x.backward()
 class Function:
     def __call__(self, input):
         x = input.data
@@ -24,14 +30,14 @@ class Function:
     def forward(self, x):
         raise NotImplementedError()
 
-    def backforwad(self, gy):
+    def backward(self, gy):
         raise NotImplementedError()
 
 class Square(Function):
     def forward(self, x):
         return x ** 2
 
-    def backforwad(self, gy):
+    def backward(self, gy):
         x = self.input.data
         gx = 2 * x * gy
         return gx
@@ -40,7 +46,7 @@ class Exp(Function):
     def forward(self, x):
         return np.exp(x)
 
-    def backforwad(self, gy):
+    def backward(self, gy):
         x = self.input.data
         gx = np.exp(x) * gy
         return gx
@@ -69,31 +75,8 @@ def main():
     y = C(b)
 
     y.grad = np.array(1.0)
-    C = y.creator
-    b = C.input
-    b.grad = C.backforwad(y.grad)
-
-    B = b.creator
-    a = B.input
-    a.grad = B.backforwad(b.grad)
-
-    A = a.creator
-    x = A.input
-    x.grad = A.backforwad(a.grad)
+    y.backward()
     print(x.grad)
-
-    # assert y.creator == C
-    # assert y.creator.input == b
-    # assert y.creator.input.creator == B
-    # assert y.creator.input.creator.input == a
-    # assert y.creator.input.creator.input.creator == A
-    # assert y.creator.input.creator.input.creator.input == x
-    # print(y.data)
-    # y.grad = np.array(1.0)
-    # b.grad = C.backforwad(y.grad)
-    # a.grad = B.backforwad(b.grad)
-    # x.grad = A.backforwad(a.grad)
-    # print(x.grad)
 
 if __name__ == "__main__":
     main()
