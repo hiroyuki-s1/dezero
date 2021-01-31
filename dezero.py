@@ -26,7 +26,6 @@ def using_config(name, value):
     finally:
         setattr(Config, name, old_value)
 
-
 class Variable:
     def __init__(self, data, name=None):
         if data is not None:
@@ -38,6 +37,9 @@ class Variable:
         self.grad = None
         self.creator = None
         self.generation = 0
+
+    def __mul__(self, other):
+        return mul(self, other)
 
     def __repr__(self):
         if self.data is None:
@@ -105,12 +107,12 @@ class Function:
         if not isinstance(ys, tuple):
             ys = (ys,)
         outputs =[Variable(as_array(y)) for y in ys]
-        if Config.enable_backprop:
+        if Config.enable_backprop: 
             self.generation = max([x.generation for x in inputs])
             for output in outputs:
                 output.set_creator(self)
             self.inputs = inputs
-            self.outputs = [weakref.ref(outputs) for output in outputs]
+            # self.outputs = [weakref.ref(outputs) for output in outputs]
     
         return outputs if len(outputs) > 1 else outputs[0]
 
@@ -119,6 +121,16 @@ class Function:
 
     def backward(self, gys):
         raise NotImplementedError()
+
+
+class Mul(Function):
+    def forward(self, x0, x1):
+        y = x0 * x1
+        return y
+
+    def backward(self, gy):
+        x0, x1 = self.inputs[0].data, self.inputs[1].data
+        return gy * x1, gy * x0
 
 class Square(Function):
     def forward(self, x):
@@ -152,7 +164,8 @@ def numerical_diff(f, x, eps=1e-4):
     y0 = f(x0)
     y1 = f(x1)
     return (y1.data - y0.data) / (2 * eps)
-    
+
+
 def f(x):
     A = Square()
     B = Exp()
@@ -167,12 +180,16 @@ def exp(x):
     f = Exp()
     return f(x)
 
+def mul(x0 ,x1 ):
+    return Mul()(x0, x1)
+
+Variable.__mul__ = mul   
+Variable.__add__ = add
 def main():
-    x = Variable(np.array(2.0))
-    a = square(x)
-    y = add(square(a), square(a))
-    y.backward()
-    print(y.data)
-    print(x.grad)
+    a = Variable(np.array(3.0))
+    b = Variable(np.array(2.0))
+    y = a * b
+    # y = mul(a,b)
+    print(y)
 if __name__ == "__main__":
     main()
