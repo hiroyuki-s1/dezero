@@ -9,8 +9,6 @@ def as_array(x):
         return np.array(x)
     return x
 
-def add(x0, x1):
-    return Add()(x0, x1)
 
 def no_grad():
     return using_config("enable_backprop", False)
@@ -27,6 +25,7 @@ def using_config(name, value):
         setattr(Config, name, old_value)
 
 class Variable:
+    __array_priority__ = 200
     def __init__(self, data, name=None):
         if data is not None:
             if not isinstance(data, np.ndarray):
@@ -40,6 +39,9 @@ class Variable:
 
     def __mul__(self, other):
         return mul(self, other)
+
+    def __rmul__(self, other):
+        return mul(other, self)
 
     def __repr__(self):
         if self.data is None:
@@ -102,6 +104,7 @@ class Variable:
         
 class Function:
     def __call__(self, *inputs):
+        inputs = [as_variable(x) for x in inputs]
         xs = [x.data for x in inputs]
         ys = self.forward(*xs)
         if not isinstance(ys, tuple):
@@ -180,15 +183,30 @@ def exp(x):
     f = Exp()
     return f(x)
 
-def mul(x0 ,x1 ):
+def add(x0, x1):
+    x1 = as_array(x1)
+    return Add()(x0, x1)
+
+def mul(x0 ,x1):
+    x1 = as_array(x1)
     return Mul()(x0, x1)
 
+def as_variable(obj):
+    if isinstance(obj, Variable):
+        return obj
+    return Variable(obj)
+
 Variable.__mul__ = mul   
+Variable.__rmul__ = mul
 Variable.__add__ = add
+Variable.__radd__ = add
+
 def main():
-    a = Variable(np.array(3.0))
-    b = Variable(np.array(2.0))
-    y = a * b
+    x = Variable(np.array(2.0))
+    y  = 3.0 * x + 1.0
+    # a = Variable(np.array(3.0))
+    # b = Variable(np.array(2.0))
+    # y = a * b
     # y = mul(a,b)
     print(y)
 if __name__ == "__main__":
