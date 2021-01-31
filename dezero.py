@@ -2,6 +2,7 @@
 # -*- coding: utf-8 -*- 
 import weakref
 import numpy as np
+import contextlib
 
 def as_array(x):
     if np.isscalar(x):
@@ -10,6 +11,21 @@ def as_array(x):
 
 def add(x0, x1):
     return Add()(x0, x1)
+
+def no_grad():
+    return using_config("enable_backprop", False)
+class Config:
+    enable_backprop = True
+
+@contextlib.contextmanager
+def using_config(name, value):
+    old_value = getattr(Config, name)
+    setattr(Config, name, value)
+    try:
+        yield
+    finally:
+        setattr(Config, name, old_value)
+
 
 class Variable:
     def __init__(self, data):
@@ -63,11 +79,12 @@ class Function:
         if not isinstance(ys, tuple):
             ys = (ys,)
         outputs =[Variable(as_array(y)) for y in ys]
-        self.generation = max([x.generation for x in inputs])
-        for output in outputs:
-            output.set_creator(self)
-        self.inputs = inputs
-        self.outputs = [weakref.ref(outputs) for output in outputs]
+        if Config.enable_backprop:
+            self.generation = max([x.generation for x in inputs])
+            for output in outputs:
+                output.set_creator(self)
+            self.inputs = inputs
+            self.outputs = [weakref.ref(outputs) for output in outputs]
     
         return outputs if len(outputs) > 1 else outputs[0]
 
