@@ -15,7 +15,9 @@ def goldstein(x, y):
     z = (1 + (x + y + 1)**2 * (19 - 14*x + 3*x**2 - 14*y + 6*x*y + 3*y**2)) * \
         (30 + (2*x - 3*y)**2 * (18 - 32*x + 12*x**2 + 48*y - 36*x*y + 27*y**2))
     return z
-
+def rosenbrock(x0, x1):
+    y = 100 * (x1 -x0 ** 2) ** 2 + (x0 - 1) ** 2
+    return y
 class Sin(Function):
     def forward(self, x):
         y = np.sin(x)
@@ -41,11 +43,22 @@ def my_sin(x, threshold = 0.0001):
             break
     return y
 
-x = Variable(np.array(np.pi/4))
-y = my_sin(x)
-y.backward()
-print(y.data)
-print(x.grad)
+def f(x):
+    y = x ** 4 - 2 * x ** 2
+    return y
+
+def gx2(x):
+    return 12 * x ** 2 -4
+
+x = Variable(np.array(2.0))
+iters = 10
+
+for i in range(iters):
+    print(i ,x)
+    y = f(x)
+    x.cleargrad()
+    y.backward()
+    x.data -= x.grad / gx2(x.data)
 
 # x = Variable(np.array(1.0))
 # y = Variable(np.array(1.0))
